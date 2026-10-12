@@ -1,0 +1,151 @@
+// Modelo ER - Certificado de Estudios (v5)
+// Las filas del certificado salen del plan_estudio; campos derivados = calculados
+
+Enum tipo_materia {
+  REGULAR
+  TCC
+  PASANTIA
+}
+
+Table institucion {
+  id int [pk, increment]
+  nombre varchar(150) [not null, note: 'Universidad Comunera']
+  sede varchar(100) [not null, note: 'origen de lugar_expedicion del certificado']
+  ciudad varchar(100) [not null]
+}
+
+Table carrera {
+  id int [pk, increment]
+  institucion_id int [not null, ref: > institucion.id]
+  nombre varchar(150) [not null]
+  titulo_otorgado varchar(150)
+  duracion_anios tinyint [note: '5']
+}
+
+Table plan_estudio {
+  id int [pk, increment]
+  carrera_id int [not null, ref: > carrera.id]
+  descripcion varchar(100) [note: 'identificador del plan de estudios']
+  anio_inicio smallint [not null, note: 'anio de entrada en vigencia']
+  anio_fin smallint [note: 'NULL mientras el plan siga vigente']
+  vigente boolean [default: true]
+}
+
+Table materia {
+  id int [pk, increment]
+  plan_estudio_id int [not null, ref: > plan_estudio.id]
+  nombre varchar(150) [not null]
+  anio_curso tinyint [not null, note: '1..duracion_anios']
+  bimestre tinyint [not null, note: '1..5; regla: 2 materias por bimestre']
+  horas_catedra int [not null, note: 'columna Carga Horaria del certificado']
+  tipo tipo_materia [default: 'REGULAR']
+}
+
+Table alumno {
+  id int [pk, increment]
+  apellidos varchar(100) [not null]
+  nombres varchar(100) [not null]
+  sexo char(1) [not null, note: 'M / F']
+  nacionalidad varchar(60)
+  nro_documento varchar(20) [unique, note: 'C.I.']
+}
+
+Table alumno_carrera {
+  alumno_id int [not null, ref: > alumno.id]
+  carrera_id int [not null, ref: > carrera.id]
+
+  indexes {
+    (alumno_id, carrera_id) [pk]
+  }
+}
+
+Table profesor {
+  id int [pk, increment]
+  apellidos varchar(100) [not null]
+  nombres varchar(100) [not null]
+}
+
+Table periodo_evaluacion {
+  codigo char(1) [pk, note: 'O / E']
+  descripcion varchar(30) [not null, note: 'Ordinaria / Extraordinaria']
+}
+
+Table modalidad {
+  codigo char(1) [pk, note: 'P / D']
+  descripcion varchar(30) [not null, note: 'Presencial / Distancia']
+}
+
+Table escala_calificacion {
+  codigo varchar(2) [pk, note: '0,1,2,3,4,5,5F']
+  nota_en_letras varchar(30) [not null, note: 'TRES, CUATRO, CINCO FELICITADO...']
+  equivalencia varchar(30) [not null, note: 'Fraude..Sobresaliente Felicitado']
+  valor_numerico decimal(3,1) [not null, note: 'para promedios; 5F = 5.0']
+  es_aprobatoria boolean [not null, note: 'aprobado desde 2 (dos)']
+}
+
+Table examen {
+  id int [pk, increment]
+  nro_acta varchar(20) [unique, not null, note: '37190 o 0000037428-4']
+  materia_id int [not null, ref: > materia.id]
+  profesor_id int [not null, ref: > profesor.id, note: 'profesor asignado']
+  fecha date [not null]
+  periodo_codigo char(1) [not null, ref: > periodo_evaluacion.codigo]
+  modalidad_codigo char(1) [not null, ref: > modalidad.codigo]
+}
+
+Table calificacion {
+  id int [pk, increment]
+  examen_id int [not null, ref: > examen.id]
+  alumno_id int [not null, ref: > alumno.id]
+  escala_codigo varchar(2) [not null, ref: > escala_calificacion.codigo]
+  titulo_trabajo varchar(255) [note: 'solo TCC']
+
+  indexes {
+    (examen_id, alumno_id) [unique]
+  }
+}
+
+Table certificado {
+  id int [pk, increment]
+  alumno_id int [not null]
+  carrera_id int [not null]
+  plan_estudio_id int [not null, ref: > plan_estudio.id, note: 'plan de estudios que se detalla en el certificado']
+  fecha_expedicion date [not null]
+
+  Note: '''
+    Filas del certificado = TODAS las materias del plan_estudio
+    (LEFT JOIN examen/calificacion para la nota del alumno).
+    Campos calculados:
+    lugar_expedicion     = institucion.sede (via carrera)
+    total_horas_catedras = SUM(materia.horas_catedra) tipo REGULAR
+    horas_pasantia       = SUM(horas_catedra) donde tipo = PASANTIA
+    horas_tcc            = SUM(horas_catedra) donde tipo = TCC
+    total_general_horas  = total_horas_catedras + horas_pasantia + horas_tcc
+    promedio_general     = AVG(escala_calificacion.valor_numerico)
+    Resumen por curso    = GROUP BY anio_curso: SUM horas, AVG nota,
+                           curso_completo = TRUE si aprobo todo
+  '''
+
+  indexes {
+    (alumno_id, carrera_id) [unique]
+  }
+}
+
+Ref: certificado.(alumno_id, carrera_id) - alumno_carrera.(alumno_id, carrera_id)
+
+Table funcionario {
+  id int [pk, increment]
+  nombre varchar(120) [not null]
+  titulo varchar(60) [note: 'PROF. / DR., MSc']
+  cargo varchar(60) [not null, note: 'Secretaria General / Rector']
+}
+
+Table certificado_firma {
+  certificado_id int [not null, ref: > certificado.id]
+  funcionario_id int [not null, ref: > funcionario.id]
+  orden tinyint [not null, note: 'orden de aparicion de la firma']
+
+  indexes {
+    (certificado_id, funcionario_id) [pk]
+  }
+}

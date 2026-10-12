@@ -1,0 +1,14 @@
+Tabla Alumno : 
+    -debe tener sexo
+Tabla plan_estudio:
+    - debe contener año_inicio y año_fin
+    - debe contemplar las materias que corresponden a cada bimestre, hay 5 bimestres por año y 2 materias en cada uno
+
+Tabla institucion:
+    - Debe contener sede
+    - Ciudad
+
+la calificacion debe provenir de un Examen, el cual tiene un numero de acta, un profesor asignado.
+
+En el certificado el total de horas catedras debe provenir de la suma de horas catedra de cada materia que curso el alumno, total_carga_horaria_reloj debe desaparecer, horas pasantia debe ser la suma de todas las materias tipo pasantia, horas TCC debe ser la suma de materias de tipo TCC, total_general_horas_reloj debe ser la suma de total_horas_catedras+horas_pasantia+horas_tcc
+lugar_expedicion debe estirar del campo sede en la tabla institucion
