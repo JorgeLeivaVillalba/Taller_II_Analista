@@ -1,17 +1,7 @@
 # Modelo de Datos — Certificado de Estudios
 
-## 1. Propósito
 
-Base de datos para emitir un **Certificado de Estudios** universitario idéntico al
-documento de ejemplo: encabezado con datos del alumno y la institución, detalle de
-TODAS las materias del plan de estudios con sus calificaciones, resumen por curso,
-Trabajo de Conclusión de Carrera (TCC), título otorgado, totales, escalas y firmas.
-
-Principio rector: **no se almacena ningún dato derivado**. Promedios, totales y
-resúmenes se calculan al momento de generar el documento, por lo que nunca quedan
-desactualizados. El único dato propio del certificado es su `fecha_expedicion`.
-
-## 2. Estructura del modelo (14 tablas + 1 enum)
+## 1. Estructura del modelo (14 tablas + 1 enum)
 
 | Grupo | Tablas | Rol |
 |---|---|---|
@@ -33,7 +23,7 @@ desactualizados. El único dato propio del certificado es su `fecha_expedicion`.
 - `certificado`: FK compuesta uno-a-uno hacia `alumno_carrera` (un certificado
   por alumno por carrera) + FK al `plan_estudio` que se detalla en el documento.
 
-## 3. Cómo funciona (flujo para emitir un certificado)
+## 2. Cómo funciona (flujo para emitir un certificado)
 
 1. Se carga la estructura: institución → carrera → plan de estudios → materias.
 2. Se inscribe al alumno en la carrera (`alumno_carrera`).
@@ -53,9 +43,9 @@ certificado ─► plan_estudio ─► materia (TODAS las filas impresas)
      └─► certificado_firma ─► funcionario (firmas)
 ```
 
-## 4. Consultas de generación (por sección del documento)
+## 3. Consultas de generación (por sección del documento)
 
-### 4.1 Encabezado
+### 3.1 Encabezado
 
 Datos de institución, carrera, alumno y plan: joins directos desde `certificado`.
 
@@ -72,7 +62,7 @@ JOIN   plan_estudio p  ON p.id = c.plan_estudio_id
 WHERE  c.id = :id_certificado;
 ```
 
-### 4.2 Detalle de materias (filas del certificado)
+### 3.2 Detalle de materias (filas del certificado)
 
 ```sql
 SELECT m.anio_curso, m.bimestre, m.nombre       AS materia,
@@ -96,7 +86,7 @@ ORDER  BY m.anio_curso, m.bimestre, m.nombre;
 El LEFT JOIN garantiza que aparezcan TODAS las materias del plan aunque el alumno
 aún no las haya cursado (fila sin nota, como en un certificado en trámite).
 
-### 4.3 Resumen por curso ("PRIMER CURSO ... Curso Completo / Horas / Promedio")
+### 3.3 Resumen por curso ("PRIMER CURSO ... Curso Completo / Horas / Promedio")
 
 ```sql
 SELECT m.anio_curso,
@@ -113,12 +103,12 @@ WHERE  c.id = :id_certificado
 GROUP  BY m.anio_curso;
 ```
 
-### 4.4 Bloque TCC
+### 3.4 Bloque TCC
 
 Fila de la materia `tipo = 'TCC'`; el título del trabajo sale de
 `calificacion.titulo_trabajo`.
 
-### 4.5 Totales generales
+### 3.5 Totales generales
 
 ```sql
 SELECT TRUNCATE(AVG(ec.valor_numerico), 2) AS promedio_general,
@@ -137,14 +127,14 @@ WHERE  c.id = :id_certificado;
 -- lugar_expedicion    = institucion.sede
 ```
 
-### 4.6 Observaciones y firmas
+### 3.6 Observaciones y firmas
 
 - Escalas y códigos: `SELECT * FROM escala_calificacion / periodo_evaluacion / modalidad`.
 - Firmas: `funcionario JOIN certificado_firma ORDER BY orden`.
 
-## 5. Triggers y lógica a implementar
+## 4. Triggers y lógica a implementar
 
-### 5.1 Integridad de la estructura del plan
+### 4.1 Integridad de la estructura del plan
 
 - **CHECK** `materia.bimestre BETWEEN 1 AND 5`; `alumno.sexo IN ('M','F')`.
 - **TRIGGER `trg_materia_max2_bimestre`** (BEFORE INSERT/UPDATE ON `materia`):
